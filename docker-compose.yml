@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  rust-proxy:
+    build:
+      context: ./rust
+      dockerfile: Dockerfile
+    container_name: discord-cloner-rust-proxy
+    environment:
+      - RUST_LOG=info
+    networks:
+      - cloner-network
+    restart: unless-stopped
+
+  rust-client:
+    build:
+      context: ./rust
+      dockerfile: Dockerfile
+    container_name: discord-cloner-rust-client
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - RUST_LOG=info
+    networks:
+      - cloner-network
+    depends_on:
+      - rust-proxy
+    restart: unless-stopped
+
+  ts-orchestrator:
+    build:
+      context: ./ts
+      dockerfile: Dockerfile
+    container_name: discord-cloner-ts-orchestrator
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - SOURCE_GUILD_ID=${SOURCE_GUILD_ID}
+      - TARGET_GUILD_ID=${TARGET_GUILD_ID}
+      - CLONE_GUILDS=${CLONE_GUILDS:-true}
+      - CLONE_CHANNELS=${CLONE_CHANNELS:-true}
+      - CLONE_ROLES=${CLONE_ROLES:-true}
+      - CLONE_MEMBERS=${CLONE_MEMBERS:-false}
+      - CLONE_MESSAGES=${CLONE_MESSAGES:-false}
+      - CLONE_EMOJIS=${CLONE_EMOJIS:-true}
+      - CLONE_WEBHOOKS=${CLONE_WEBHOOKS:-true}
+      - CLONE_THREADS=${CLONE_THREADS:-false}
+      - MESSAGE_LIMIT=${MESSAGE_LIMIT:-50}
+      - PROXY_HOST=${PROXY_HOST:-rust-proxy}
+      - PROXY_PORT=${PROXY_PORT:-8080}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - NODE_ENV=production
+    networks:
+      - cloner-network
+    depends_on:
+      - rust-client
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+networks:
+  cloner-network:
+    driver: bridge
+
